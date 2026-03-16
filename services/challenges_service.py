@@ -46,24 +46,38 @@ def get_scoring_zones_config() -> List[Dict[str, Any]]:
 # CORE SCORING LOGIC - Used by ALL interfaces
 # =============================================================================
 
-def calculate_score(distance_km: float, threshold_km: float) -> int:
+# Bonus points for clicking inside the country
+INSIDE_COUNTRY_BONUS = 10
+
+def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool = True) -> int:
     """
-    THE scoring function. Takes distance and threshold, returns score 0-100.
-    Score is based on which ZONE you land in, not exact distance.
-    All distances within the same zone get the same score.
+    THE scoring function. Takes distance and threshold, returns score 0-100+bonus.
+    Uses non-linear (exponential) scoring based on distance percentage.
+    
+    Scoring:
+    - Base score: 0-100 based on distance (non-linear exponential decay)
+    - Bonus: +10 points for having the guess inside the country
+    - If outside country: 0 points
     """
-    if distance_km > threshold_km:
+    if not is_in_country:
         return 0
+    
+    if distance_km > threshold_km:
+        return INSIDE_COUNTRY_BONUS  # Only bonus for being in country
+    
     if distance_km <= 0:
-        return 100
+        return 100 + INSIDE_COUNTRY_BONUS
     
-    # Find which zone the distance falls into
+    # Non-linear scoring: exponential decay
+    # Score decreases faster as you get further from target
     fraction = distance_km / threshold_km
-    for zone in SCORING_ZONES:
-        if zone["inner"] <= fraction < zone["outer"]:
-            return zone["score"]
     
-    return 0  # Outside all zones
+    # Exponential decay: score = 100 * e^(-k * fraction)
+    # k=3 gives a nice curve where 50% distance ≈ 22 points, 25% ≈ 47 points
+    import math
+    base_score = int(100 * math.exp(-3 * fraction))
+    
+    return base_score + INSIDE_COUNTRY_BONUS
 
 
 def get_scoring_zone(distance_km: float, threshold_km: float) -> str:
@@ -252,11 +266,8 @@ class ChallengesService:
             country_name=challenge.country
         )
         
-        # Calculate score - 0 if outside country boundaries
-        if is_in_country:
-            score = calculate_score(distance_km, threshold_km)
-        else:
-            score = 0
+        # Calculate score with is_in_country for bonus points
+        score = calculate_score(distance_km, threshold_km, is_in_country)
         
         # Get scoring zone
         zone = get_scoring_zone(distance_km, threshold_km)
