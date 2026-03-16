@@ -76,12 +76,13 @@ COUNTRY_AREA_KM2: Dict[str, float] = {
 # =============================================================================
 # Both backend scoring and visual display (web, desktop) derive from this.
 # Bigger score = thinner ring zone.
+# Score is fixed per zone, not based on exact distance within zone.
 
 SCORING_ZONES = [
-    {"inner": 0.00, "outer": 0.10, "color": "green",  "label": "Perfect"},   # Best
-    {"inner": 0.10, "outer": 0.30, "color": "yellow", "label": "Great"},     # Good
-    {"inner": 0.30, "outer": 0.60, "color": "orange", "label": "Good"},      # OK
-    {"inner": 0.60, "outer": 1.00, "color": "red",    "label": "Close"},     # Worst
+    {"inner": 0.00, "outer": 0.10, "color": "green",  "label": "Perfect", "score": 100},  # Best
+    {"inner": 0.10, "outer": 0.30, "color": "yellow", "label": "Great",   "score": 75},   # Good
+    {"inner": 0.30, "outer": 0.60, "color": "orange", "label": "Good",    "score": 50},   # OK
+    {"inner": 0.60, "outer": 1.00, "color": "red",    "label": "Close",   "score": 25},   # Worst
 ]
 
 
@@ -100,15 +101,21 @@ def get_scoring_zones_config() -> List[Dict[str, Any]]:
 def calculate_score(distance_km: float, threshold_km: float) -> int:
     """
     THE scoring function. Takes distance and threshold, returns score 0-100.
-    This is the ONLY place scoring logic lives.
+    Score is based on which ZONE you land in, not exact distance.
+    All distances within the same zone get the same score.
     """
     if distance_km > threshold_km:
         return 0
     if distance_km <= 0:
         return 100
     
-    # Linear decay: 100 at center, 0 at threshold
-    return int(100 * (1 - distance_km / threshold_km))
+    # Find which zone the distance falls into
+    fraction = distance_km / threshold_km
+    for zone in SCORING_ZONES:
+        if zone["inner"] <= fraction < zone["outer"]:
+            return zone["score"]
+    
+    return 0  # Outside all zones
 
 
 def get_scoring_zone(distance_km: float, threshold_km: float) -> str:
