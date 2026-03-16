@@ -11,6 +11,8 @@ from api.models import (
     ChallengeListResponse,
     GuessRequest,
     GuessResultResponse,
+    ScoringZone,
+    ScoringZonesResponse,
     DifficultyEnum,
 )
 from services.challenges_service import get_challenges_service
@@ -114,7 +116,7 @@ async def get_challenge(challenge_id: str):
 async def submit_guess(request: GuessRequest):
     """
     Submit a guess for a challenge.
-    Returns distance, accuracy, and points earned.
+    Returns distance, score (0-100), and scoring zone.
     """
     service = get_challenges_service()
     
@@ -134,8 +136,28 @@ async def submit_guess(request: GuessRequest):
         actual_lat=result.actual_lat,
         actual_lng=result.actual_lng,
         distance_km=result.distance_km,
-        accuracy_percent=result.accuracy_percent,
-        points_earned=result.points_earned,
-        max_points=result.max_points,
+        threshold_km=result.threshold_km,
+        score=result.score,
+        scoring_zone=result.scoring_zone,
         is_correct=result.is_correct
+    )
+
+
+@router.get("/{challenge_id}/scoring-zones", response_model=ScoringZonesResponse)
+async def get_scoring_zones(challenge_id: str):
+    """Get scoring zone boundaries for a challenge (for drawing rings)."""
+    service = get_challenges_service()
+    
+    zones = service.get_scoring_zones_for_challenge(challenge_id)
+    if not zones:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    challenge = service.get_challenge_by_id(challenge_id)
+    from services.challenges_service import get_threshold_km
+    threshold = get_threshold_km(challenge.country, challenge.difficulty)
+    
+    return ScoringZonesResponse(
+        challenge_id=challenge_id,
+        threshold_km=threshold,
+        zones=[ScoringZone(**z) for z in zones]
     )

@@ -180,10 +180,26 @@ class GuessResultResponse(BaseModel):
     actual_lat: float
     actual_lng: float
     distance_km: float
-    accuracy_percent: float
-    points_earned: int
-    max_points: int
+    threshold_km: float
+    score: int  # 0-100, THE score
+    scoring_zone: str
     is_correct: bool
+
+
+class ScoringZone(BaseModel):
+    """A scoring zone for ring display."""
+    inner_fraction: float
+    outer_fraction: float
+    color: str
+    inner_km: float
+    outer_km: float
+
+
+class ScoringZonesResponse(BaseModel):
+    """Scoring zones for a challenge."""
+    challenge_id: str
+    threshold_km: float
+    zones: List[ScoringZone]
 
 
 # ============== Common Response Models ==============

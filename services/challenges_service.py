@@ -1,6 +1,6 @@
 """
 Challenges service for managing geographic challenges.
-Provides the single source of truth for game challenges across all interfaces.
+Single source of truth for game logic - used by ALL interfaces (web, desktop, mobile).
 """
 
 import math
@@ -11,6 +11,161 @@ from dataclasses import dataclass
 from entities.challenge import Challenge, DifficultyLevel
 
 
+# Country areas in km² for threshold calculation
+COUNTRY_AREA_KM2: Dict[str, float] = {
+    "Russia": 17_098_242, "Canada": 9_984_670,
+    "United States": 9_833_517, "China": 9_596_960,
+    "Brazil": 8_515_767, "Australia": 7_692_024,
+    "India": 3_287_263, "Argentina": 2_780_400,
+    "Kazakhstan": 2_724_900, "Algeria": 2_381_741,
+    "Saudi Arabia": 2_149_690, "Mexico": 1_964_375,
+    "Indonesia": 1_904_569, "Sudan": 1_861_484,
+    "Libya": 1_759_540, "Iran": 1_648_195,
+    "Mongolia": 1_564_116, "Peru": 1_285_216,
+    "South Africa": 1_219_090, "Colombia": 1_141_748,
+    "Ethiopia": 1_104_300, "Egypt": 1_001_450,
+    "Tanzania": 945_087, "Nigeria": 923_768,
+    "Venezuela": 916_445, "Namibia": 824_292,
+    "Mozambique": 801_590, "Pakistan": 881_913,
+    "Turkey": 783_562, "Chile": 756_102,
+    "Zambia": 752_612, "Myanmar": 676_578,
+    "Afghanistan": 652_230, "Ukraine": 603_550,
+    "Botswana": 581_730, "Madagascar": 587_041,
+    "Kenya": 580_367, "France": 643_801,
+    "Thailand": 513_120, "Spain": 505_990,
+    "Japan": 377_915, "Germany": 357_114,
+    "Finland": 338_145, "Malaysia": 329_847,
+    "Vietnam": 331_212, "Norway": 323_802,
+    "Poland": 312_696, "Italy": 301_340,
+    "Philippines": 300_000, "New Zealand": 268_838,
+    "United Kingdom": 243_610, "Uganda": 241_038,
+    "Ghana": 238_533, "Romania": 238_397,
+    "Laos": 236_800, "Guyana": 214_969,
+    "Belarus": 207_600, "Kyrgyzstan": 199_951,
+    "Senegal": 196_722, "Cambodia": 181_035,
+    "Uruguay": 176_215, "Suriname": 163_820,
+    "Tunisia": 163_610, "Bangladesh": 147_570,
+    "Nepal": 147_181, "Tajikistan": 143_100,
+    "Greece": 131_957, "North Korea": 120_538,
+    "Iceland": 103_000, "South Korea": 99_678,
+    "Hungary": 93_028, "Portugal": 92_212,
+    "Jordan": 89_342, "Azerbaijan": 86_600,
+    "Austria": 83_871, "UAE": 83_600,
+    "Czech Republic": 78_866, "Serbia": 77_474,
+    "Panama": 75_417, "Georgia": 69_700,
+    "Sri Lanka": 65_610, "Lithuania": 65_300,
+    "Latvia": 64_589, "Croatia": 56_594,
+    "Bosnia": 51_197, "Costa Rica": 51_100,
+    "Slovakia": 49_035, "Estonia": 45_228,
+    "Denmark": 42_924, "Netherlands": 41_543,
+    "Switzerland": 41_285, "Bhutan": 38_394,
+    "Moldova": 33_846, "Belgium": 30_528,
+    "Armenia": 29_743, "Albania": 28_748,
+    "Slovenia": 20_273, "Israel": 20_770,
+    "Cyprus": 9_251, "Luxembourg": 2_586,
+    "Vanuatu": 12_189, "Fiji": 18_274,
+    "Tuvalu": 26, "Maldives": 298,
+    "Singapore": 728, "Greenland": 836_330,
+    "Cape Verde": 4_033, "Seychelles": 459,
+    "Comoros": 2_235, "Gambia": 11_295,
+    "East Timor": 14_874,
+}
+
+# =============================================================================
+# SCORING ZONE CONFIGURATION - Single source of truth for ALL interfaces
+# =============================================================================
+# Both backend scoring and visual display (web, desktop) derive from this.
+# Bigger score = thinner ring zone.
+
+SCORING_ZONES = [
+    {"inner": 0.00, "outer": 0.10, "color": "green",  "label": "Perfect"},   # Best
+    {"inner": 0.10, "outer": 0.30, "color": "yellow", "label": "Great"},     # Good
+    {"inner": 0.30, "outer": 0.60, "color": "orange", "label": "Good"},      # OK
+    {"inner": 0.60, "outer": 1.00, "color": "red",    "label": "Close"},     # Worst
+]
+
+
+def get_scoring_zones_config() -> List[Dict[str, Any]]:
+    """
+    Get the scoring zone configuration.
+    This is THE single source of truth for zone boundaries.
+    """
+    return SCORING_ZONES
+
+
+# =============================================================================
+# CORE SCORING LOGIC - Used by ALL interfaces
+# =============================================================================
+
+def calculate_score(distance_km: float, threshold_km: float) -> int:
+    """
+    THE scoring function. Takes distance and threshold, returns score 0-100.
+    This is the ONLY place scoring logic lives.
+    """
+    if distance_km > threshold_km:
+        return 0
+    if distance_km <= 0:
+        return 100
+    
+    # Linear decay: 100 at center, 0 at threshold
+    return int(100 * (1 - distance_km / threshold_km))
+
+
+def get_scoring_zone(distance_km: float, threshold_km: float) -> str:
+    """Determine which scoring zone a distance falls into."""
+    if distance_km > threshold_km:
+        return "miss"
+    
+    fraction = distance_km / threshold_km
+    for zone in SCORING_ZONES:
+        if zone["inner"] <= fraction < zone["outer"]:
+            return zone["color"]
+    return "red"  # Edge case at exactly threshold
+
+
+def get_threshold_km(country: str, difficulty: DifficultyLevel) -> float:
+    """
+    Calculate threshold based on country size and difficulty.
+    Larger countries = larger threshold = more forgiving.
+    """
+    BASE_THRESHOLD_KM = 600.0   # Minimum threshold - increased for easier scoring
+    MAX_THRESHOLD_KM = 1100.0   # Maximum threshold cap - increased for easier scoring
+    
+    DIFFICULTY_MULTIPLIERS = {
+        DifficultyLevel.EASY: 2.0,
+        DifficultyLevel.MEDIUM: 1.4,
+        DifficultyLevel.HARD: 1.0,
+        DifficultyLevel.EXPERT: 0.65,
+    }
+    
+    area_km2 = COUNTRY_AREA_KM2.get(country, 500_000)
+    multiplier = DIFFICULTY_MULTIPLIERS[difficulty]
+    country_km = math.sqrt(area_km2) * multiplier
+    
+    return min(MAX_THRESHOLD_KM, max(BASE_THRESHOLD_KM, country_km))
+
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance between two points in km."""
+    EARTH_RADIUS_KM = 6371
+    
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+    
+    a = (math.sin(delta_lat / 2) ** 2 +
+         math.cos(lat1_rad) * math.cos(lat2_rad) *
+         math.sin(delta_lon / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    return EARTH_RADIUS_KM * c
+
+
+# =============================================================================
+# Data classes
+# =============================================================================
+
 @dataclass
 class GuessResult:
     """Result of a guess submission."""
@@ -20,21 +175,17 @@ class GuessResult:
     actual_lat: float
     actual_lng: float
     distance_km: float
-    accuracy_percent: float
-    points_earned: int
-    max_points: int
-    is_correct: bool  # Within acceptable distance
+    threshold_km: float
+    score: int  # 0-100
+    scoring_zone: str
+    is_correct: bool
 
 
 class ChallengesService:
     """
-    Service for managing geographic challenges.
-    Contains the challenge database and scoring logic used by all interfaces.
+    Service for managing challenges and calculating results.
+    All scoring uses the core functions above.
     """
-    
-    # Scoring constants
-    MAX_POINTS_PER_CHALLENGE = 5000
-    EARTH_RADIUS_KM = 6371
     
     def __init__(self):
         self._challenges = self._load_challenges()
@@ -42,15 +193,12 @@ class ChallengesService:
         self._challenges_by_difficulty = self._group_by_difficulty()
     
     def get_all_challenges(self) -> List[Challenge]:
-        """Get all available challenges."""
         return self._challenges
     
     def get_challenge_by_id(self, challenge_id: str) -> Optional[Challenge]:
-        """Get a specific challenge by ID."""
         return self._challenges_by_id.get(challenge_id)
     
     def get_challenges_by_difficulty(self, difficulty: str) -> List[Challenge]:
-        """Get challenges filtered by difficulty."""
         try:
             level = DifficultyLevel(difficulty.lower())
             return self._challenges_by_difficulty.get(level, [])
@@ -62,13 +210,6 @@ class ChallengesService:
         difficulty: Optional[str] = None,
         exclude_ids: Optional[List[str]] = None
     ) -> Optional[Challenge]:
-        """
-        Get a random challenge, optionally filtered by difficulty.
-        
-        Args:
-            difficulty: Optional difficulty filter ('easy', 'medium', 'hard', 'expert', or 'random')
-            exclude_ids: List of challenge IDs to exclude
-        """
         exclude_ids = exclude_ids or []
         
         if difficulty and difficulty.lower() != 'random':
@@ -77,11 +218,7 @@ class ChallengesService:
             challenges = self._challenges
         
         available = [c for c in challenges if c.id not in exclude_ids]
-        
-        if not available:
-            return None
-        
-        return random.choice(available)
+        return random.choice(available) if available else None
     
     def calculate_guess_result(
         self,
@@ -89,35 +226,25 @@ class ChallengesService:
         guessed_lat: float,
         guessed_lng: float
     ) -> Optional[GuessResult]:
-        """
-        Calculate the result of a guess.
-        
-        Args:
-            challenge_id: ID of the challenge being guessed
-            guessed_lat: Guessed latitude
-            guessed_lng: Guessed longitude
-            
-        Returns:
-            GuessResult with distance, accuracy, and points
-        """
+        """Calculate result using the core scoring functions."""
         challenge = self.get_challenge_by_id(challenge_id)
         if not challenge:
             return None
         
-        # Calculate distance using Haversine formula
-        distance_km = self._haversine_distance(
+        # Calculate distance
+        distance_km = haversine_distance(
             guessed_lat, guessed_lng,
             challenge.latitude, challenge.longitude
         )
         
-        # Calculate accuracy (0-100%)
-        accuracy = self._calculate_accuracy(distance_km, challenge.max_distance_km)
+        # Get threshold for this country/difficulty
+        threshold_km = get_threshold_km(challenge.country, challenge.difficulty)
         
-        # Calculate points
-        points = self._calculate_points(distance_km, challenge.difficulty)
+        # Calculate score using THE scoring function
+        score = calculate_score(distance_km, threshold_km)
         
-        # Determine if "correct" (within max distance)
-        is_correct = distance_km <= challenge.max_distance_km
+        # Get scoring zone
+        zone = get_scoring_zone(distance_km, threshold_km)
         
         return GuessResult(
             challenge_id=challenge_id,
@@ -126,82 +253,31 @@ class ChallengesService:
             actual_lat=challenge.latitude,
             actual_lng=challenge.longitude,
             distance_km=round(distance_km, 2),
-            accuracy_percent=round(accuracy, 1),
-            points_earned=points,
-            max_points=self.MAX_POINTS_PER_CHALLENGE,
-            is_correct=is_correct
+            threshold_km=round(threshold_km, 2),
+            score=score,
+            scoring_zone=zone,
+            is_correct=(distance_km <= threshold_km)
         )
     
-    def _haversine_distance(
-        self, lat1: float, lon1: float, lat2: float, lon2: float
-    ) -> float:
-        """Calculate distance between two points using Haversine formula."""
-        lat1_rad = math.radians(lat1)
-        lat2_rad = math.radians(lat2)
-        delta_lat = math.radians(lat2 - lat1)
-        delta_lon = math.radians(lon2 - lon1)
+    def get_scoring_zones_for_challenge(self, challenge_id: str) -> Optional[List[Dict]]:
+        """Get scoring zone data for visual ring display."""
+        challenge = self.get_challenge_by_id(challenge_id)
+        if not challenge:
+            return None
         
-        a = (math.sin(delta_lat / 2) ** 2 +
-             math.cos(lat1_rad) * math.cos(lat2_rad) *
-             math.sin(delta_lon / 2) ** 2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        threshold = get_threshold_km(challenge.country, challenge.difficulty)
         
-        return self.EARTH_RADIUS_KM * c
-    
-    def _calculate_accuracy(self, distance_km: float, max_distance_km: float) -> float:
-        """Calculate accuracy percentage based on distance."""
-        if distance_km <= 0:
-            return 100.0
-        if distance_km >= max_distance_km:
-            return 0.0
-        return 100.0 * (1 - distance_km / max_distance_km)
-    
-    def _calculate_points(self, distance_km: float, difficulty: DifficultyLevel) -> int:
-        """
-        Calculate points earned based on distance and difficulty.
-        Uses exponential decay for more forgiving scoring.
-        """
-        # Difficulty multipliers
-        multipliers = {
-            DifficultyLevel.EASY: 0.8,
-            DifficultyLevel.MEDIUM: 1.0,
-            DifficultyLevel.HARD: 1.3,
-            DifficultyLevel.EXPERT: 1.5
-        }
-        
-        # Perfect threshold (km) - get max points within this
-        perfect_thresholds = {
-            DifficultyLevel.EASY: 50,
-            DifficultyLevel.MEDIUM: 25,
-            DifficultyLevel.HARD: 10,
-            DifficultyLevel.EXPERT: 5
-        }
-        
-        # Max distance for any points
-        max_distances = {
-            DifficultyLevel.EASY: 10000,
-            DifficultyLevel.MEDIUM: 5000,
-            DifficultyLevel.HARD: 2500,
-            DifficultyLevel.EXPERT: 1000
-        }
-        
-        perfect = perfect_thresholds[difficulty]
-        max_dist = max_distances[difficulty]
-        multiplier = multipliers[difficulty]
-        
-        if distance_km <= perfect:
-            # Perfect score
-            base_points = self.MAX_POINTS_PER_CHALLENGE
-        elif distance_km >= max_dist:
-            # No points
-            base_points = 0
-        else:
-            # Exponential decay
-            normalized = (distance_km - perfect) / (max_dist - perfect)
-            decay = math.exp(-3 * normalized)
-            base_points = int(self.MAX_POINTS_PER_CHALLENGE * decay)
-        
-        return int(base_points * multiplier)
+        return [
+            {
+                "inner_fraction": zone["inner"],
+                "outer_fraction": zone["outer"],
+                "color": zone["color"],
+                "label": zone["label"],
+                "inner_km": threshold * zone["inner"],
+                "outer_km": threshold * zone["outer"],
+            }
+            for zone in SCORING_ZONES
+        ]
     
     def _group_by_difficulty(self) -> Dict[DifficultyLevel, List[Challenge]]:
         """Group challenges by difficulty level."""

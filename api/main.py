@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from api.routes import game, scores, challenges
+from services.challenges_service import get_scoring_zones_config
 
 app = FastAPI(
     title="GeoChallenge API",
@@ -46,6 +47,19 @@ async def root():
     if WEB_DIR.exists():
         return FileResponse(WEB_DIR / "index.html")
     return {"status": "ok", "service": "GeoChallenge API"}
+
+
+@app.get("/api/scoring/zones")
+async def get_scoring_zones():
+    """
+    Get scoring zone configuration.
+    This is THE single source of truth for zone boundaries.
+    All interfaces (web, desktop) must use these values.
+    """
+    return {
+        "zones": get_scoring_zones_config(),
+        "description": "Zone boundaries as fraction of threshold. inner/outer define the ring bounds."
+    }
 
 
 @app.get("/health")
