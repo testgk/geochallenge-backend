@@ -2,6 +2,6 @@
 API Routes
 """
 
-from api.routes import game, scores, challenges
+from api.routes import game, scores, challenges, boundaries
 
-__all__ = ["game", "scores", "challenges"]
+__all__ = ["game", "scores", "challenges", "boundaries"]

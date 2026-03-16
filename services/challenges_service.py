@@ -12,6 +12,7 @@ from entities.challenge import Challenge, DifficultyLevel
 from db.repositories.challenge_repository import ChallengeRepository
 from db.repositories.country_repository import CountryRepository
 from db.repositories.difficulty_level_repository import DifficultyLevelRepository
+from services.boundary_service import get_boundary_service
 
 
 # Caches - loaded from database on first access
@@ -243,8 +244,19 @@ class ChallengesService:
         # Get threshold for this country/difficulty
         threshold_km = get_threshold_km(challenge.country, challenge.difficulty)
         
-        # Calculate score using THE scoring function
-        score = calculate_score(distance_km, threshold_km)
+        # Check if the guessed point is within the country's boundaries
+        boundary_service = get_boundary_service()
+        is_in_country = boundary_service.is_point_in_country(
+            lat=guessed_lat,
+            lng=guessed_lng,
+            country_name=challenge.country
+        )
+        
+        # Calculate score - 0 if outside country boundaries
+        if is_in_country:
+            score = calculate_score(distance_km, threshold_km)
+        else:
+            score = 0
         
         # Get scoring zone
         zone = get_scoring_zone(distance_km, threshold_km)
@@ -258,8 +270,8 @@ class ChallengesService:
             distance_km=round(distance_km, 2),
             threshold_km=round(threshold_km, 2),
             score=score,
-            scoring_zone=zone,
-            is_correct=(distance_km <= threshold_km)
+            scoring_zone=zone if is_in_country else "outside",
+            is_correct=(distance_km <= threshold_km and is_in_country)
         )
     
     def get_scoring_zones_for_challenge(self, challenge_id: str) -> Optional[List[Dict]]:
