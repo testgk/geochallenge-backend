@@ -34,26 +34,20 @@ class BoundaryService:
     
     def _get_country_geometry(self, country_name: str) -> Optional[Dict[str, Any]]:
         """Get the GeoJSON geometry for a country."""
-        cursor = self.db.cursor()
-        try:
-            # Try exact match first
-            cursor.execute(
-                "SELECT geometry FROM country_boundaries WHERE LOWER(country_name) = LOWER(%s)",
-                (country_name,)
-            )
-            row = cursor.fetchone()
-            if row:
-                return row[0]
-            
-            # Try partial match
-            cursor.execute(
-                "SELECT geometry FROM country_boundaries WHERE LOWER(country_name) LIKE LOWER(%s)",
-                (f"%{country_name}%",)
-            )
-            row = cursor.fetchone()
-            return row[0] if row else None
-        finally:
-            cursor.close()
+        # Try exact match first
+        row = self.db.execute_one(
+            "SELECT geometry FROM country_boundaries WHERE LOWER(country_name) = LOWER(%s)",
+            (country_name,)
+        )
+        if row:
+            return row['geometry']
+        
+        # Try partial match
+        row = self.db.execute_one(
+            "SELECT geometry FROM country_boundaries WHERE LOWER(country_name) LIKE LOWER(%s)",
+            (f"%{country_name}%",)
+        )
+        return row['geometry'] if row else None
     
     def get_country_boundary(self, country_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -62,38 +56,33 @@ class BoundaryService:
         Returns:
             GeoJSON Feature with geometry and properties
         """
-        cursor = self.db.cursor()
-        try:
-            cursor.execute(
+        # Try exact match first
+        row = self.db.execute_one(
+            """SELECT country_name, country_code, geometry, bbox 
+               FROM country_boundaries 
+               WHERE LOWER(country_name) = LOWER(%s)""",
+            (country_name,)
+        )
+        if not row:
+            # Try partial match
+            row = self.db.execute_one(
                 """SELECT country_name, country_code, geometry, bbox 
                    FROM country_boundaries 
-                   WHERE LOWER(country_name) = LOWER(%s)""",
-                (country_name,)
+                   WHERE LOWER(country_name) LIKE LOWER(%s)""",
+                (f"%{country_name}%",)
             )
-            row = cursor.fetchone()
-            if not row:
-                # Try partial match
-                cursor.execute(
-                    """SELECT country_name, country_code, geometry, bbox 
-                       FROM country_boundaries 
-                       WHERE LOWER(country_name) LIKE LOWER(%s)""",
-                    (f"%{country_name}%",)
-                )
-                row = cursor.fetchone()
-            
-            if row:
-                return {
-                    "type": "Feature",
-                    "properties": {
-                        "name": row[0],
-                        "code": row[1],
-                        "bbox": row[3]
-                    },
-                    "geometry": row[2]
-                }
-            return None
-        finally:
-            cursor.close()
+        
+        if row:
+            return {
+                "type": "Feature",
+                "properties": {
+                    "name": row['country_name'],
+                    "code": row['country_code'],
+                    "bbox": row['bbox']
+                },
+                "geometry": row['geometry']
+            }
+        return None
     
     def _point_in_geometry(self, x: float, y: float, geometry: Dict[str, Any]) -> bool:
         """
