@@ -1,0 +1,39 @@
+# Render.com Blueprint Configuration
+# Deploy with: https://dashboard.render.com/blueprints
+
+services:
+  # Backend API Service
+  - type: web
+    name: geochallenge-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: geochallenge-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: geochallenge-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: geochallenge-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: geochallenge-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: geochallenge-db
+          property: password
+    healthCheckPath: /health
+    plan: free
+    
+databases:
+  - name: geochallenge-db
+    databaseName: geochallenge_db
+    user: geochallenge
+    plan: free
