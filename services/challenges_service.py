@@ -49,7 +49,15 @@ def get_scoring_zones_config() -> List[Dict[str, Any]]:
 # Bonus points for clicking inside the country
 INSIDE_COUNTRY_BONUS = 10
 
-def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool = True) -> int:
+# Difficulty multipliers for scoring
+DIFFICULTY_MULTIPLIERS = {
+    'easy': 1.0,
+    'medium': 1.2,
+    'hard': 1.5,
+    'expert': 2.0
+}
+
+def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool = True, difficulty: str = 'medium') -> int:
     """
     THE scoring function. Takes distance and threshold, returns score 0-100+bonus.
     Uses non-linear (exponential) scoring based on distance percentage.
@@ -57,16 +65,19 @@ def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool
     Scoring:
     - Base score: 0-100 based on distance (non-linear exponential decay)
     - Bonus: +10 points for having the guess inside the country
+    - Difficulty multiplier: Easy 1x, Medium 1.2x, Hard 1.5x, Expert 2x
     - If outside country: 0 points
     """
     if not is_in_country:
         return 0
     
+    multiplier = DIFFICULTY_MULTIPLIERS.get(difficulty.lower(), 1.0)
+    
     if distance_km > threshold_km:
-        return INSIDE_COUNTRY_BONUS  # Only bonus for being in country
+        return int(INSIDE_COUNTRY_BONUS * multiplier)  # Only bonus for being in country
     
     if distance_km <= 0:
-        return 100 + INSIDE_COUNTRY_BONUS
+        return int((100 + INSIDE_COUNTRY_BONUS) * multiplier)
     
     # Non-linear scoring: exponential decay
     # Score decreases faster as you get further from target
@@ -77,7 +88,7 @@ def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool
     import math
     base_score = int(100 * math.exp(-3 * fraction))
     
-    return base_score + INSIDE_COUNTRY_BONUS
+    return int((base_score + INSIDE_COUNTRY_BONUS) * multiplier)
 
 
 def get_scoring_zone(distance_km: float, threshold_km: float) -> str:
@@ -266,8 +277,9 @@ class ChallengesService:
             country_name=challenge.country
         )
         
-        # Calculate score with is_in_country for bonus points
-        score = calculate_score(distance_km, threshold_km, is_in_country)
+        # Calculate score with is_in_country for bonus points and difficulty multiplier
+        difficulty_str = challenge.difficulty.value if hasattr(challenge.difficulty, 'value') else str(challenge.difficulty)
+        score = calculate_score(distance_km, threshold_km, is_in_country, difficulty_str)
         
         # Get scoring zone
         zone = get_scoring_zone(distance_km, threshold_km)
