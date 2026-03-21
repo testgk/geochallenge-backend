@@ -1,42 +1,42 @@
-# Render.com Blueprint - PRODUCTION
+# Render.com Blueprint - STAGING
 # Deploy with: https://dashboard.render.com/blueprints
-# Connected to branch: master
+# Connect to branch: staging
 
 services:
   - type: web
-    name: geochallenge-api
+    name: geochallenge-api-staging
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    branch: master
+    branch: staging
     envVars:
       - key: DB_HOST
         fromDatabase:
-          name: geochallenge-db
+          name: geochallenge-db-staging
           property: host
       - key: DB_PORT
         fromDatabase:
-          name: geochallenge-db
+          name: geochallenge-db-staging
           property: port
       - key: DB_NAME
         fromDatabase:
-          name: geochallenge-db
+          name: geochallenge-db-staging
           property: database
       - key: DB_USER
         fromDatabase:
-          name: geochallenge-db
+          name: geochallenge-db-staging
           property: user
       - key: DB_PASSWORD
         fromDatabase:
-          name: geochallenge-db
+          name: geochallenge-db-staging
           property: password
       - key: ENVIRONMENT
-        value: production
+        value: staging
     healthCheckPath: /health
     plan: free
 
 databases:
-  - name: geochallenge-db
-    databaseName: geochallenge_db
+  - name: geochallenge-db-staging
+    databaseName: geochallenge_db_staging
     user: geochallenge
     plan: free
