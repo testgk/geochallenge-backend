@@ -15,7 +15,7 @@ from api.models import (
     ScoringZonesResponse,
     DifficultyEnum,
 )
-from services.challenges_service import get_challenges_service
+from services.challenges_service import get_challenges_service, get_threshold_km
 
 router = APIRouter()
 
@@ -153,7 +153,6 @@ async def get_scoring_zones(challenge_id: str):
         raise HTTPException(status_code=404, detail="Challenge not found")
     
     challenge = service.get_challenge_by_id(challenge_id)
-    from services.challenges_service import get_threshold_km
     threshold = get_threshold_km(challenge.country, challenge.difficulty)
     
     return ScoringZonesResponse(

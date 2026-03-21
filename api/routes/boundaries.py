@@ -25,13 +25,6 @@ class PointCheckResponse(BaseModel):
     country_name: str
 
 
-class BoundaryResponse(BaseModel):
-    """Response containing country boundary GeoJSON."""
-    type: str = "Feature"
-    properties: dict
-    geometry: dict
-
-
 @router.post("/check-point", response_model=PointCheckResponse)
 async def check_point_in_country(request: PointCheckRequest):
     """

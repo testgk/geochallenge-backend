@@ -2,10 +2,10 @@
 REM start_api.bat — Start only the API server (assumes database is running)
 
 echo.
-echo 🚀 GeoChallenge API Server
+echo GeoChallenge API Server
 echo ==========================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 REM Activate virtual environment if it exists
 if exist "..\.venv\Scripts\activate.bat" (
@@ -17,7 +17,7 @@ if exist "..\.venv\Scripts\activate.bat" (
 REM Install dependencies if needed
 pip show fastapi >nul 2>&1
 if errorlevel 1 (
-    echo 📥 Installing dependencies...
+    echo Installing dependencies...
     pip install -r requirements.txt
 )
 

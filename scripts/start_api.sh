@@ -4,9 +4,9 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/.."
 
-echo "🚀 GeoChallenge API Server"
+echo "GeoChallenge API Server"
 echo "=========================="
 
 # Activate virtual environment if it exists
@@ -18,7 +18,7 @@ fi
 
 # Install dependencies if needed
 if ! python -c "import fastapi" 2>/dev/null; then
-    echo "📥 Installing dependencies..."
+    echo "Installing dependencies..."
     pip install -r requirements.txt
 fi
 

@@ -85,7 +85,6 @@ def calculate_score(distance_km: float, threshold_km: float, is_in_country: bool
     
     # Exponential decay: score = 100 * e^(-k * fraction)
     # k=3 gives a nice curve where 50% distance ≈ 22 points, 25% ≈ 47 points
-    import math
     base_score = int(100 * math.exp(-3 * fraction))
     
     return int((base_score + INSIDE_COUNTRY_BONUS) * multiplier)

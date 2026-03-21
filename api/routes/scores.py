@@ -12,14 +12,9 @@ from api.models import (
     GameModeEnum,
     LeaderboardPeriodEnum,
 )
-from services.scoring_service import ScoringService
+from services.scoring_service import get_scoring_service
 
 router = APIRouter()
-
-
-def _get_scoring_service() -> ScoringService:
-    """Get scoring service instance."""
-    return ScoringService()
 
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)
@@ -33,7 +28,7 @@ async def get_leaderboard(
     
     Returns ranked scores filtered by game mode and time period.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     try:
         entries_data = service.get_leaderboard(
@@ -75,7 +70,7 @@ async def get_user_stats(user_id: int):
     
     Returns games played, total score, best score, averages, and rank.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     try:
         stats = service.get_user_stats(user_id)
@@ -104,7 +99,7 @@ async def get_user_rank(
     """
     Get a user's rank in a specific game mode.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     try:
         rank = service.score_repo.get_user_rank(user_id, game_mode.value)

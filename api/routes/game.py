@@ -13,14 +13,9 @@ from api.models import (
     SuccessResponse,
 )
 from entities.game_session import GameMode
-from services.scoring_service import ScoringService
+from services.scoring_service import get_scoring_service
 
 router = APIRouter()
-
-
-def _get_scoring_service() -> ScoringService:
-    """Get scoring service instance."""
-    return ScoringService()
 
 
 @router.post("/start", response_model=GameSessionResponse)
@@ -30,7 +25,7 @@ async def start_game(request: StartGameRequest):
     
     If the user has an existing active session, it will be abandoned.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     try:
         game_mode = GameMode(request.game_mode.value)
@@ -70,7 +65,7 @@ async def submit_round(session_id: int, request: SubmitRoundRequest):
     Call this after each guess in the game to record the result
     and get the points earned.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     result = service.submit_round(
         session_id=session_id,
@@ -101,7 +96,7 @@ async def end_game(session_id: int):
     
     This records the final score and returns rankings.
     """
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     result = service.end_game(session_id)
     
@@ -128,7 +123,7 @@ async def end_game(session_id: int):
 @router.post("/{session_id}/abandon", response_model=SuccessResponse)
 async def abandon_game(session_id: int):
     """Abandon an active game session."""
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     success = service.abandon_game(session_id)
     
@@ -144,7 +139,7 @@ async def abandon_game(session_id: int):
 @router.get("/active/{user_id}", response_model=GameSessionResponse)
 async def get_active_game(user_id: int):
     """Get the user's active game session if any."""
-    service = _get_scoring_service()
+    service = get_scoring_service()
     
     session = service.get_active_game(user_id)
     

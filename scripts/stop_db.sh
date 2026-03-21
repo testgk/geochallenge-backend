@@ -4,15 +4,15 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/.."
 
 CONTAINER="geochallenge_postgres"
 
-echo "🐘 GeoChallenge Database"
+echo "GeoChallenge Database"
 echo "========================"
 
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
-    echo "ℹ️  Container '${CONTAINER}' is not running."
+    echo "Container '${CONTAINER}' is not running."
     exit 0
 fi
 
@@ -22,7 +22,6 @@ else
     COMPOSE="docker compose"
 fi
 
-echo "🛑 Stopping PostgreSQL container..."
+echo "Stopping PostgreSQL container..."
 $COMPOSE down
-echo "✅ Database stopped."
-
+echo "Database stopped."
