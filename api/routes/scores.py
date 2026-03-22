@@ -39,15 +39,16 @@ async def get_leaderboard(
         
         entries = []
         for i, entry in enumerate(entries_data, 1):
+            score_obj = entry.get('score')
             entries.append(LeaderboardEntry(
                 rank=entry.get('rank', i),
-                user_id=entry.get('user_id'),
+                user_id=score_obj.user_id if score_obj else entry.get('user_id'),
                 username=entry.get('username'),
                 display_name=entry.get('display_name'),
-                points=entry.get('points', 0),
-                accuracy=entry.get('accuracy', 0.0),
+                points=score_obj.points if score_obj else entry.get('points', 0),
+                accuracy=score_obj.accuracy if score_obj else entry.get('accuracy', 0.0),
                 game_mode=game_mode.value,
-                achieved_at=entry.get('achieved_at')
+                achieved_at=score_obj.achieved_at if score_obj else entry.get('achieved_at')
             ))
         
         return LeaderboardResponse(
