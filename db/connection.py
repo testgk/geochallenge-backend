@@ -5,7 +5,10 @@ PostgreSQL database connection management.
 import os
 from contextlib import contextmanager
 from typing import Optional, Generator
+from dotenv import load_dotenv
 import psycopg2
+
+load_dotenv()
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 

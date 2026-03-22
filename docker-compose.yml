@@ -7,14 +7,14 @@ services:
     environment:
       POSTGRES_USER: geochallenge
       POSTGRES_PASSWORD: geochallenge_secret
-      POSTGRES_DB: geochallenge_db
+      POSTGRES_DB: geochallenge_dev
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U geochallenge -d geochallenge_db"]
+      test: ["CMD-SHELL", "pg_isready -U geochallenge -d geochallenge_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
