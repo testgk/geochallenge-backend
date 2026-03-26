@@ -37,3 +37,5 @@ Thumbs.db
 *.log
 pip-log.txt
 
+# Generated dev scripts
+_run_api.py
