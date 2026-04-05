@@ -3,12 +3,20 @@ Database entities package.
 Contains domain entities that map to database tables.
 """
 
-from entities.base import BaseEntity
-from entities.game_session import GameSessionEntity
-from entities.score import ScoreEntity
+from .game_session import GameSessionEntity, GameMode, GameStatus
+from .score import ScoreEntity
+from .challenge import CityChallenge,Challenge,StateChallenge,ChallengeType,DifficultyLevel
+from .base import BaseEntity
 
 __all__ = [
     'BaseEntity',
     'GameSessionEntity',
-    'ScoreEntity'
+    'ScoreEntity',
+    'ChallengeType',
+    'Challenge',
+    'StateChallenge',
+    'CityChallenge',
+    'DifficultyLevel',
+    'GameStatus',
+    'GameMode'
 ]

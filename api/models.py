@@ -41,6 +41,12 @@ class LeaderboardPeriodEnum(str, Enum):
     ALL_TIME = "all_time"
 
 
+class ChallengeTypeEnum( str, Enum ):
+    """Challenge types."""
+    CITY  = "city"
+    STATE = "state"
+
+
 # ============== Game Session Models ==============
 
 class StartGameRequest(BaseModel):
@@ -157,6 +163,8 @@ class ChallengeResponse(BaseModel):
     difficulty: str
     hints: List[str]
     max_distance_km: float
+    challenge_type: str = "city"
+    state_code: Optional[ str ] = None
 
 
 class ChallengeListResponse(BaseModel):
@@ -184,6 +192,16 @@ class GuessResultResponse(BaseModel):
     score: int  # 0-100, THE score
     scoring_zone: str
     is_correct: bool
+
+    def __str__( self ) -> str:
+        result = "correct" if self.is_correct else "wrong"
+        return (
+            f"GuessResult[ {self.challenge_id} | {result} | "
+            f"score={self.score} | dist={self.distance_km:.1f}km / {self.threshold_km:.1f}km | "
+            f"zone={self.scoring_zone} | "
+            f"guessed=({self.guessed_lat:.4f}, {self.guessed_lng:.4f}) "
+            f"actual=({self.actual_lat:.4f}, {self.actual_lng:.4f}) ]"
+        )
 
 
 class ScoringZone(BaseModel):

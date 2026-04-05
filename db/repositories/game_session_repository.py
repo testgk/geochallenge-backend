@@ -5,8 +5,8 @@ Game session repository for database operations.
 from datetime import datetime
 from typing import Optional, List
 
-from db.connection import get_db_connection
-from entities.game_session import GameSessionEntity, GameStatus, GameMode
+from ..connection import get_db_connection
+from entities import GameSessionEntity, GameStatus, GameMode
 
 
 class GameSessionRepository:

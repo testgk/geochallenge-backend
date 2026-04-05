@@ -4,7 +4,7 @@ Difficulty level repository for database operations.
 
 from typing import Optional, List, Dict
 
-from db.connection import get_db_connection
+from ..connection import get_db_connection
 
 
 class DifficultyLevelRepository:

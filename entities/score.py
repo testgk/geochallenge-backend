@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
 
-from entities.base import BaseEntity
+from .base import BaseEntity
 
 
 class ScoreType(Enum):

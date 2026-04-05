@@ -5,7 +5,7 @@ Score repository for database operations.
 from datetime import datetime, timedelta
 from typing import Optional, List
 
-from db.connection import get_db_connection
+from ..connection import get_db_connection
 from entities.score import ScoreEntity, ScoreType
 
 
