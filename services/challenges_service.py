@@ -134,10 +134,12 @@ class ChallengesService:
         if challenge_type:
             try:
                 ct         = ChallengeType( challenge_type.lower() )
+                print(f"ct: {ct}")
                 challenges = [ c for c in challenges if c.challenge_type == ct ]
             except ValueError:
                 pass
 
+        print( f"challenges: { challenges }")
         available = [ c for c in challenges if c.id not in exclude_ids ]
         return random.choice( available ) if available else None
 

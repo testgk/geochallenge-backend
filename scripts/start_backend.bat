@@ -32,6 +32,14 @@ if errorlevel 1 (
     pip install -r requirements.txt
 )
 
+REM Load country boundaries (safe to re-run, uses ON CONFLICT DO UPDATE)
+echo.
+echo Loading country boundaries...
+set DB_NAME=geochallenge_dev
+set DB_USER=geochallenge
+set DB_PASSWORD=geochallenge_secret
+python scripts/load_boundaries.py
+
 REM Start API server
 echo.
 echo Starting API server...
