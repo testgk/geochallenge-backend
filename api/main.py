@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from api.routes import game, scores, challenges, boundaries
+from api.routes import game, scores, challenges, boundaries, city_challenges, state_challenges
 from services.challenges_service import get_scoring_zones_config
 
 app = FastAPI(
@@ -33,7 +33,9 @@ app.add_middleware(
 app.include_router(game.router, prefix="/api/game", tags=["Game"])
 app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
 app.include_router(challenges.router, prefix="/api/challenges", tags=["Challenges"])
-app.include_router(boundaries.router, prefix="/api/boundaries", tags=["Boundaries"])
+app.include_router(boundaries.router,       prefix="/api/boundaries",        tags=["Boundaries"])
+app.include_router(city_challenges.router,  prefix="/api/challenges/cities",  tags=["City Challenges"])
+app.include_router(state_challenges.router, prefix="/api/challenges/states",  tags=["State Challenges"])
 
 # Mount static files for web frontend
 if WEB_DIR.exists():
