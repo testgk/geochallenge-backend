@@ -137,8 +137,8 @@ class CountryChallenge( Challenge ):
         self.challenge_type = ChallengeType.COUNTRY
 
     def is_correct_location( self, boundary_service, lat: float, lng: float ) -> bool:
-        """Check if the guessed point falls within this state's boundary."""
-        return boundary_service.is_point_in_state( lat, lng, self.state_code )
+        """Check if the guessed point falls within this country's boundary."""
+        return boundary_service.is_point_in_country( lat, lng, self.country )
 
     def score_guess( self, is_in_region: bool, distance_km: float, threshold_km: float ):
         from services.scoring_utils import ScoringResult
