@@ -43,8 +43,8 @@ class LeaderboardPeriodEnum(str, Enum):
 
 class ChallengeTypeEnum( str, Enum ):
     """Challenge types."""
-    CITY  = "city"
-    STATE = "state"
+    CITY    = "city"
+    COUNTRY = "country"
 
 
 # ============== Game Session Models ==============
@@ -152,8 +152,8 @@ class ScoreEntryResponse(BaseModel):
 
 # ============== Challenge Models ==============
 
-class ChallengeResponse(BaseModel):
-    """Response for a single challenge."""
+class CityChallengeResponse(BaseModel):
+    """Response for a single city challenge."""
     id: str
     location_name: str
     latitude: float
@@ -161,16 +161,84 @@ class ChallengeResponse(BaseModel):
     country: str
     continent: str
     difficulty: str
-    hints: List[str]
+    hints: List[ str ]
     max_distance_km: float
     challenge_type: str = "city"
+
+
+class CountryChallengeResponse(BaseModel):
+    """Response for a single country challenge."""
+    id: str
+    location_name: str
+    country: str
+    continent: str
+    difficulty: str
+    hints: List[ str ]
+    challenge_type: str = "country"
     state_code: Optional[ str ] = None
 
 
-class ChallengeListResponse(BaseModel):
-    """List of challenges response."""
-    challenges: List[ChallengeResponse]
+# Generic response used by the mixed /api/challenges endpoints
+class ChallengeResponse(BaseModel):
+    """Response for a single challenge (any type)."""
+    id: str
+    location_name: str
+    country: str
+    continent: str
+    difficulty: str
+    hints: List[ str ]
+    challenge_type: str              = "city"
+    latitude:        Optional[ float ] = None
+    longitude:       Optional[ float ] = None
+    max_distance_km: Optional[ float ] = None
+    state_code:      Optional[ str ]   = None
+
+
+class CityChallengeListResponse(BaseModel):
+    """List of city challenges."""
+    challenges: List[ CityChallengeResponse ]
     total: int
+
+
+class CountryChallengeListResponse(BaseModel):
+    """List of country challenges."""
+    challenges: List[ CountryChallengeResponse ]
+    total: int
+
+
+class ChallengeListResponse(BaseModel):
+    """List of challenges (any type)."""
+    challenges: List[ ChallengeResponse ]
+    total: int
+
+
+class CreateChallengeRequest( BaseModel ):
+    """Request to create a new challenge."""
+    id:              Optional[ str ]             = Field( default = None, description = "Custom ID (auto-generated from location+country if omitted)" )
+    location_name:   str                         = Field( ..., description = "Display name of the location" )
+    country:         str
+    continent:       str
+    difficulty:      DifficultyEnum
+    challenge_type:  ChallengeTypeEnum           = ChallengeTypeEnum.CITY
+    latitude:        Optional[ float ]           = Field( default = None, ge = -90,  le = 90  )
+    longitude:       Optional[ float ]           = Field( default = None, ge = -180, le = 180 )
+    max_distance_km: Optional[ float ]           = Field( default = None, gt = 0 )
+    state_code:      Optional[ str ]             = None
+    hints:           List[ str ]                 = Field( default_factory = list )
+
+
+class UpdateChallengeRequest( BaseModel ):
+    """Request to update an existing challenge."""
+    location_name:   Optional[ str ]             = None
+    latitude:        Optional[ float ]            = Field( default = None, ge = -90,  le = 90  )
+    longitude:       Optional[ float ]            = Field( default = None, ge = -180, le = 180 )
+    country:         Optional[ str ]             = None
+    continent:       Optional[ str ]             = None
+    difficulty:      Optional[ DifficultyEnum ]  = None
+    max_distance_km: Optional[ float ]            = Field( default = None, gt = 0 )
+    challenge_type:  Optional[ ChallengeTypeEnum ] = None
+    state_code:      Optional[ str ]             = None
+    hints:           Optional[ List[ str ] ]      = None
 
 
 class GuessRequest(BaseModel):
@@ -185,8 +253,8 @@ class GuessResultResponse(BaseModel):
     challenge_id: str
     guessed_lat: float
     guessed_lng: float
-    actual_lat: float
-    actual_lng: float
+    actual_lat: Optional[ float ] = None
+    actual_lng: Optional[ float ] = None
     distance_km: float
     threshold_km: float
     score: int  # 0-100, THE score
@@ -194,13 +262,14 @@ class GuessResultResponse(BaseModel):
     is_correct: bool
 
     def __str__( self ) -> str:
-        result = "correct" if self.is_correct else "wrong"
+        result  = "correct" if self.is_correct else "wrong"
+        actual  = f"({self.actual_lat:.4f}, {self.actual_lng:.4f})" if self.actual_lat is not None else "n/a"
         return (
             f"GuessResult[ {self.challenge_id} | {result} | "
             f"score={self.score} | dist={self.distance_km:.1f}km / {self.threshold_km:.1f}km | "
             f"zone={self.scoring_zone} | "
             f"guessed=({self.guessed_lat:.4f}, {self.guessed_lng:.4f}) "
-            f"actual=({self.actual_lat:.4f}, {self.actual_lng:.4f}) ]"
+            f"actual={actual} ]"
         )
 
 
@@ -221,7 +290,6 @@ class ScoringZonesResponse(BaseModel):
 
 
 # ============== Common Response Models ==============
-
 class ErrorResponse(BaseModel):
     """Standard error response."""
     detail: str

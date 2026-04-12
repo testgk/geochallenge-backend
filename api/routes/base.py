@@ -10,13 +10,17 @@ import logging
 from api.models import (
     ChallengeResponse,
     ChallengeListResponse,
+    CityChallengeResponse,
+    CityChallengeListResponse,
+    CountryChallengeResponse,
+    CountryChallengeListResponse,
     GuessRequest,
     GuessResultResponse,
     ScoringZone,
     ScoringZonesResponse,
     DifficultyEnum,
 )
-from entities.challenge import ChallengeType, StateChallenge
+from entities.challenge import ChallengeType, CountryChallenge
 from services.challenges_service import get_challenges_service, get_threshold_km
 
 
@@ -47,8 +51,20 @@ class BaseChallengeRouter:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _to_response( self, c ) -> ChallengeResponse:
-        return ChallengeResponse(
+    def _to_response( self, c ):
+        from api.models import CityChallengeResponse, CountryChallengeResponse
+        if isinstance( c, CountryChallenge ):
+            return CountryChallengeResponse(
+                id             = c.id,
+                location_name  = c.location_name,
+                country        = c.country,
+                continent      = c.continent,
+                difficulty     = c.difficulty.value,
+                hints          = c.hints,
+                challenge_type = c.challenge_type.value,
+                state_code     = c.state_code,
+            )
+        return CityChallengeResponse(
             id              = c.id,
             location_name   = c.location_name,
             latitude        = c.latitude,
@@ -59,7 +75,6 @@ class BaseChallengeRouter:
             hints           = c.hints,
             max_distance_km = c.max_distance_km,
             challenge_type  = c.challenge_type.value,
-            state_code      = c.state_code if isinstance( c, StateChallenge ) else None,
         )
 
     def _not_found( self ) -> HTTPException:
@@ -78,11 +93,10 @@ class BaseChallengeRouter:
     ) -> ChallengeListResponse:
         service    = get_challenges_service()
         challenges = (
-            service.get_challenges_by_difficulty( difficulty.value )
+            service.get_challenges_by_difficulty( difficulty.value, self.challenge_type.value )
             if difficulty
-            else service.get_all_challenges()
+            else service.get_all_challenges( self.challenge_type )
         )
-        challenges = [ c for c in challenges if c.challenge_type == self.challenge_type ]
         self.logger.debug( f"Returning { len( challenges ) } { self.type_label } challenges" )
         return ChallengeListResponse(
             challenges = [ self._to_response( c ) for c in challenges ],

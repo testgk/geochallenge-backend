@@ -150,6 +150,32 @@ class BoundaryService:
         
         return inside
     
+    def is_point_in_state( self, lat: float, lng: float, state_code: str ) -> bool:
+        """
+        Check if a point is within a state/province boundary.
+
+        Args:
+            lat:        Latitude of the point
+            lng:        Longitude of the point
+            state_code: ISO 3166-2 code, e.g. 'US-CA'
+
+        Returns:
+            True if inside the state boundary.
+            Falls back to True (correct) when no boundary data is available.
+        """
+        geometry = self._get_state_geometry( state_code )
+        if not geometry:
+            return True
+        return self._point_in_geometry( lng, lat, geometry )
+
+    def _get_state_geometry( self, state_code: str ) -> Optional[ Dict[ str, Any ] ]:
+        """Get the GeoJSON geometry for a state by its ISO 3166-2 code."""
+        row = self.db.execute_one(
+            "SELECT geometry FROM state_boundaries WHERE UPPER( state_code ) = UPPER( %s )",
+            ( state_code, )
+        )
+        return row[ 'geometry' ] if row else None
+
     def get_all_boundaries_for_countries(self, country_names: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Get boundaries for multiple countries at once.

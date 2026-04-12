@@ -2,8 +2,8 @@
 Challenge repository for database operations.
 """
 
-from typing import Optional, List, Dict
-from entities.challenge import Challenge, ChallengeType, DifficultyLevel, StateChallenge, CityChallenge
+from typing import Optional, List, Dict, Any
+from entities.challenge import Challenge, ChallengeType, DifficultyLevel, CountryChallenge, CityChallenge
 from ..connection import get_db_connection
 
 
@@ -99,6 +99,66 @@ class ChallengeRepository:
         results = self.db.execute( query, ( challenge_type.value, ) )
         return [ self._row_to_entity( row ) for row in results ]
 
+    def insert( self, data: Dict[ str, Any ] ) -> Challenge:
+        """Insert a new challenge and its hints. Returns the created challenge."""
+        hints = data.pop( 'hints', [] )
+
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO challenges
+                        ( id, location_name, latitude, longitude, country, continent,
+                          difficulty, max_distance_km, challenge_type, state_code )
+                    VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s )
+                    """,
+                    (
+                        data[ 'id' ],
+                        data[ 'location_name' ],
+                        data[ 'latitude' ],
+                        data[ 'longitude' ],
+                        data[ 'country' ],
+                        data[ 'continent' ],
+                        data[ 'difficulty' ],
+                        data[ 'max_distance_km' ],
+                        data[ 'challenge_type' ],
+                        data.get( 'state_code' ),
+                    )
+                )
+                for i, hint_text in enumerate( hints ):
+                    cur.execute(
+                        "INSERT INTO challenge_hints ( challenge_id, hint_text, hint_order ) VALUES ( %s, %s, %s )",
+                        ( data[ 'id' ], hint_text, i )
+                    )
+
+        return self.get_by_id( data[ 'id' ] )
+
+    def update( self, challenge_id: str, data: Dict[ str, Any ] ) -> Optional[ Challenge ]:
+        """Update a challenge's fields. Pass hints as a list to replace all hints."""
+        hints = data.pop( 'hints', None )
+
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cur:
+                if data:
+                    set_parts = [ f"{col} = %s" for col in data.keys() ]
+                    values = list( data.values() ) + [ challenge_id ]
+                    cur.execute(
+                        f"UPDATE challenges SET { ', '.join( set_parts ) } WHERE id = %s",
+                        tuple( values )
+                    )
+                if hints is not None:
+                    cur.execute(
+                        "DELETE FROM challenge_hints WHERE challenge_id = %s",
+                        ( challenge_id, )
+                    )
+                    for i, hint_text in enumerate( hints ):
+                        cur.execute(
+                            "INSERT INTO challenge_hints ( challenge_id, hint_text, hint_order ) VALUES ( %s, %s, %s )",
+                            ( challenge_id, hint_text, i )
+                        )
+
+        return self.get_by_id( challenge_id )
+
     def _row_to_entity( self, row: Dict ) -> Challenge:
         """Convert a database row to the correct Challenge subclass."""
         challenge_type = ChallengeType( row.get( 'challenge_type', 'city' ) )
@@ -113,6 +173,6 @@ class ChallengeRepository:
             hints = list( row[ 'hints' ] ) if row[ 'hints' ] else [],
             max_distance_km = float( row[ 'max_distance_km' ] ),
         )
-        if challenge_type == ChallengeType.STATE:
-            return StateChallenge( **common, state_code = row.get( 'state_code' ) or '' )
+        if challenge_type == ChallengeType.COUNTRY:
+            return CountryChallenge( **common, state_code = row.get( 'state_code' ) or '' )
         return CityChallenge( **common )

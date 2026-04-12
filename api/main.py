@@ -35,7 +35,7 @@ app.include_router(scores.router, prefix="/api/scores", tags=["Scores"])
 app.include_router(challenges.router, prefix="/api/challenges", tags=["Challenges"])
 app.include_router(boundaries.router,       prefix="/api/boundaries",        tags=["Boundaries"])
 app.include_router(city_challenges.router,  prefix="/api/challenges/cities",  tags=["City Challenges"])
-app.include_router(state_challenges.router, prefix="/api/challenges/states",  tags=["State Challenges"])
+app.include_router(state_challenges.router, prefix="/api/challenges/countries", tags=["Country Challenges"])
 
 # Mount static files for web frontend
 if WEB_DIR.exists():

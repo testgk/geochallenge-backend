@@ -5,7 +5,7 @@ Contains domain entities that map to database tables.
 
 from .game_session import GameSessionEntity, GameMode, GameStatus
 from .score import ScoreEntity
-from .challenge import CityChallenge,Challenge,StateChallenge,ChallengeType,DifficultyLevel
+from .challenge import CityChallenge,Challenge,CountryChallenge,ChallengeType,DifficultyLevel
 from .base import BaseEntity
 
 __all__ = [
@@ -14,7 +14,7 @@ __all__ = [
     'ScoreEntity',
     'ChallengeType',
     'Challenge',
-    'StateChallenge',
+    'CountryChallenge',
     'CityChallenge',
     'DifficultyLevel',
     'GameStatus',

@@ -15,8 +15,10 @@ from api.models import (
     ScoringZone,
     ScoringZonesResponse,
     DifficultyEnum,
+    CreateChallengeRequest,
+    UpdateChallengeRequest,
 )
-from entities.challenge import StateChallenge
+from entities.challenge import CountryChallenge
 from services.challenges_service import get_challenges_service, get_threshold_km
 
 router = APIRouter()
@@ -28,17 +30,17 @@ logger = logging.getLogger(__name__)
 def _challenge_to_response( c ) -> ChallengeResponse:
     """Convert any Challenge subclass to ChallengeResponse."""
     return ChallengeResponse(
-        id = c.id,
-        location_name = c.location_name,
-        latitude = c.latitude,
-        longitude = c.longitude,
-        country = c.country,
-        continent = c.continent,
-        difficulty = c.difficulty.value,
-        hints = c.hints,
+        id              = c.id,
+        location_name   = c.location_name,
+        latitude        = c.latitude,
+        longitude       = c.longitude,
+        country         = c.country,
+        continent       = c.continent,
+        difficulty      = c.difficulty.value,
+        hints           = c.hints,
         max_distance_km = c.max_distance_km,
-        challenge_type = c.challenge_type.value,
-        state_code = c.state_code if isinstance( c, StateChallenge ) else None,
+        challenge_type  = c.challenge_type.value,
+        state_code      = c.state_code if isinstance( c, CountryChallenge ) else None,
     )
 
 
@@ -53,18 +55,46 @@ async def list_challenges(
     """
     service = get_challenges_service()
 
-    if difficulty:
-        challenges = service.get_challenges_by_difficulty( difficulty.value )
-    else:
-        challenges = service.get_all_challenges()
+    ct = challenge_type.value if challenge_type else None
 
-    if challenge_type:
-        challenges = [ c for c in challenges if c.challenge_type.value == challenge_type.value ]
+    if difficulty:
+        challenges = service.get_challenges_by_difficulty( difficulty.value, ct )
+    else:
+        from entities.challenge import ChallengeType as CT
+        challenges = service.get_all_challenges( CT( ct ) if ct else None )
 
     return ChallengeListResponse(
         challenges = [ _challenge_to_response( c ) for c in challenges ],
-        total = len( challenges )
+        total      = len( challenges )
     )
+
+
+@router.post( "/", response_model = ChallengeResponse, status_code = 201 )
+async def create_challenge( request: CreateChallengeRequest ):
+    """Insert a new challenge into the database."""
+    service = get_challenges_service()
+
+    data = {
+        'id':             request.id,
+        'location_name':  request.location_name,
+        'country':        request.country,
+        'continent':      request.continent,
+        'difficulty':     request.difficulty.value,
+        'challenge_type': request.challenge_type.value,
+        'state_code':     request.state_code,
+        'hints':          request.hints,
+    }
+    if request.latitude        is not None: data[ 'latitude' ]        = request.latitude
+    if request.longitude       is not None: data[ 'longitude' ]       = request.longitude
+    if request.max_distance_km is not None: data[ 'max_distance_km' ] = request.max_distance_km
+
+    try:
+        created = service.create_challenge( data )
+    except Exception as e:
+        logger.error( f"Failed to create challenge: {e}" )
+        raise HTTPException( status_code = 409, detail = str( e ) )
+
+    return _challenge_to_response( created )
 
 
 @router.get( "/random", response_model = ChallengeResponse )
@@ -106,6 +136,33 @@ async def get_challenge( challenge_id: str ):
         raise HTTPException( status_code = 404, detail = "Challenge not found" )
 
     return _challenge_to_response( challenge )
+
+
+@router.put( "/{challenge_id}", response_model = ChallengeResponse )
+async def update_challenge( challenge_id: str, request: UpdateChallengeRequest ):
+    """Update fields of an existing challenge."""
+    service = get_challenges_service()
+
+    if not service.get_challenge_by_id( challenge_id ):
+        raise HTTPException( status_code = 404, detail = "Challenge not found" )
+
+    # Build update dict — only include fields explicitly set by the caller
+    fields = {}
+    for field_name in ( 'location_name', 'latitude', 'longitude', 'country', 'continent',
+                        'max_distance_km', 'state_code', 'hints' ):
+        value = getattr( request, field_name )
+        if value is not None:
+            fields[ field_name ] = value
+    if request.difficulty is not None:
+        fields[ 'difficulty' ] = request.difficulty.value
+    if request.challenge_type is not None:
+        fields[ 'challenge_type' ] = request.challenge_type.value
+
+    updated = service.update_challenge( challenge_id, fields )
+    if not updated:
+        raise HTTPException( status_code = 500, detail = "Update failed" )
+
+    return _challenge_to_response( updated )
 
 
 @router.post( "/guess", response_model = GuessResultResponse )
