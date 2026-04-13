@@ -65,14 +65,16 @@ CREATE INDEX IF NOT EXISTS idx_game_sessions_game_mode ON game_sessions(game_mod
 CREATE INDEX IF NOT EXISTS idx_game_sessions_score ON game_sessions(score DESC);
 
 -- Add constraint for valid status values
-ALTER TABLE game_sessions 
-ADD CONSTRAINT chk_game_status 
-CHECK (status IN ('pending', 'in_progress', 'completed', 'abandoned'));
+DO $$ BEGIN
+    ALTER TABLE game_sessions ADD CONSTRAINT chk_game_status
+        CHECK (status IN ('pending', 'in_progress', 'completed', 'abandoned'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Add constraint for valid game modes
-ALTER TABLE game_sessions 
-ADD CONSTRAINT chk_game_mode 
-CHECK (game_mode IN ('classic', 'time_attack', 'challenge', 'multiplayer'));
+DO $$ BEGIN
+    ALTER TABLE game_sessions ADD CONSTRAINT chk_game_mode
+        CHECK (game_mode IN ('classic', 'time_attack', 'challenge', 'multiplayer'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================
 -- 04_create_scores.sql
@@ -106,9 +108,10 @@ CREATE INDEX IF NOT EXISTS idx_scores_achieved_at ON scores(achieved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_leaderboard ON scores(game_mode, difficulty, points DESC);
 
 -- Add constraint for valid score types
-ALTER TABLE scores 
-ADD CONSTRAINT chk_score_type 
-CHECK (score_type IN ('game_score', 'daily_best', 'weekly_best', 'all_time'));
+DO $$ BEGIN
+    ALTER TABLE scores ADD CONSTRAINT chk_score_type
+        CHECK (score_type IN ('game_score', 'daily_best', 'weekly_best', 'all_time'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================
 -- 05_create_countries.sql
@@ -132,7 +135,9 @@ CREATE INDEX IF NOT EXISTS idx_countries_continent ON countries(continent);
 -- ============================================================
 -- Create challenges table for storing geographic challenges
 
-CREATE TYPE difficulty_level AS ENUM ('easy', 'medium', 'hard', 'expert');
+DO $$ BEGIN
+    CREATE TYPE difficulty_level AS ENUM ('easy', 'medium', 'hard', 'expert');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS challenges (
     id VARCHAR(100) PRIMARY KEY,  -- e.g., 'paris_france'
@@ -675,12 +680,9 @@ UPDATE challenges SET challenge_type = 'country' WHERE challenge_type = 'state';
 CREATE TABLE IF NOT EXISTS country_challenges (
     id              VARCHAR(100) PRIMARY KEY,   -- e.g. 'france', 'united_states'
     location_name   VARCHAR(100) NOT NULL,
-    latitude        FLOAT,                      -- centroid lat (may be NULL until boundaries loaded)
-    longitude       FLOAT,                      -- centroid lng
     country         VARCHAR(100) NOT NULL,
     continent       VARCHAR(50)  NOT NULL DEFAULT 'Unknown',
     difficulty      VARCHAR(20)  NOT NULL DEFAULT 'medium',
-    max_distance_km INTEGER      NOT NULL DEFAULT 2000,
     state_code      VARCHAR(20)  DEFAULT NULL,
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -698,31 +700,23 @@ CREATE INDEX IF NOT EXISTS idx_country_challenges_difficulty ON country_challeng
 CREATE INDEX IF NOT EXISTS idx_country_challenges_continent  ON country_challenges( continent );
 CREATE INDEX IF NOT EXISTS idx_country_challenge_hints_id    ON country_challenge_hints( challenge_id );
 
--- Seed from countries, joining country_boundaries for centroid computation.
--- bbox format: [minLng, minLat, maxLng, maxLat]
-INSERT INTO country_challenges ( id, location_name, latitude, longitude, country, continent, difficulty, max_distance_km )
+-- Seed from countries table.
+INSERT INTO country_challenges ( id, location_name, country, continent, difficulty )
 SELECT
-    LOWER( REGEXP_REPLACE( c.name, '\s+', '_', 'g' ) )                          AS id,
-    c.name                                                                        AS location_name,
-    CASE WHEN cb.bbox IS NOT NULL
-         THEN ( ( cb.bbox ->> 1 )::FLOAT + ( cb.bbox ->> 3 )::FLOAT ) / 2.0
-         ELSE NULL END                                                            AS latitude,
-    CASE WHEN cb.bbox IS NOT NULL
-         THEN ( ( cb.bbox ->> 0 )::FLOAT + ( cb.bbox ->> 2 )::FLOAT ) / 2.0
-         ELSE NULL END                                                            AS longitude,
-    c.name                                                                        AS country,
-    COALESCE( c.continent, 'Unknown' )                                           AS continent,
-    'medium'                                                                      AS difficulty,
-    2000                                                                          AS max_distance_km
+    LOWER( REGEXP_REPLACE( c.name, '\s+', '_', 'g' ) )  AS id,
+    c.name                                                 AS location_name,
+    c.name                                                 AS country,
+    COALESCE( c.continent, 'Unknown' )                    AS continent,
+    'medium'                                               AS difficulty
 FROM countries c
-LEFT JOIN country_boundaries cb ON LOWER( cb.country_name ) = LOWER( c.name )
 ON CONFLICT ( id ) DO NOTHING;
 
 -- ============================================================
 -- 16_drop_country_challenge_coords.sql
 -- ============================================================
--- Remove coordinate/distance columns from country_challenges —
--- country challenges are scored by boundary check only, not by distance.
+-- Columns latitude, longitude, max_distance_km were removed from
+-- country_challenges in script 15. This script is kept as a no-op
+-- for databases migrated before that change.
 ALTER TABLE country_challenges
     DROP COLUMN IF EXISTS latitude,
     DROP COLUMN IF EXISTS longitude,

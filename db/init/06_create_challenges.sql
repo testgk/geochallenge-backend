@@ -1,6 +1,8 @@
 -- Create challenges table for storing geographic challenges
 
-CREATE TYPE difficulty_level AS ENUM ('easy', 'medium', 'hard', 'expert');
+DO $$ BEGIN
+    CREATE TYPE difficulty_level AS ENUM ('easy', 'medium', 'hard', 'expert');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS challenges (
     id VARCHAR(100) PRIMARY KEY,  -- e.g., 'paris_france'

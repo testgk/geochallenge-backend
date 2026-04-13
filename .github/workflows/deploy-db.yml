@@ -12,12 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DB_HOST:     ${{ secrets.DB_HOST }}
-      DB_PORT:     ${{ secrets.DB_PORT || '5432' }}
-      DB_NAME:     ${{ secrets.DB_NAME }}
-      DB_USER:     ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      PGPASSWORD:  ${{ secrets.DB_PASSWORD }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
       - name: Checkout
@@ -25,13 +20,6 @@ jobs:
 
       - name: Install PostgreSQL client
         run: sudo apt-get install -y postgresql-client
-
-      - name: Run migrations
-        run: |
-          echo "Running schema + seed migrations..."
-          psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-               -f deploy/migrate.sql
-          echo "Migrations complete."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,24 +29,5 @@ jobs:
       - name: Install Python dependencies
         run: pip install psycopg2-binary
 
-      - name: Load country boundaries
-        run: |
-          echo "Loading country boundaries..."
-          python scripts/load_boundaries.py
-          echo "Boundaries loaded."
-
-      - name: Verify row counts
-        run: |
-          psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
-            SELECT table_name, row_count FROM (
-              SELECT 'challenges'          AS table_name, COUNT(*) AS row_count FROM challenges
-              UNION ALL
-              SELECT 'country_challenges',                COUNT(*)               FROM country_challenges
-              UNION ALL
-              SELECT 'country_boundaries',                COUNT(*)               FROM country_boundaries
-              UNION ALL
-              SELECT 'countries',                         COUNT(*)               FROM countries
-              UNION ALL
-              SELECT 'difficulty_levels',                 COUNT(*)               FROM difficulty_levels
-            ) t ORDER BY table_name;
-          "
+      - name: Run full setup
+        run: bash deploy/setup.sh

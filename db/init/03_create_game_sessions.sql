@@ -24,11 +24,13 @@ CREATE INDEX IF NOT EXISTS idx_game_sessions_game_mode ON game_sessions(game_mod
 CREATE INDEX IF NOT EXISTS idx_game_sessions_score ON game_sessions(score DESC);
 
 -- Add constraint for valid status values
-ALTER TABLE game_sessions 
-ADD CONSTRAINT chk_game_status 
-CHECK (status IN ('pending', 'in_progress', 'completed', 'abandoned'));
+DO $$ BEGIN
+    ALTER TABLE game_sessions ADD CONSTRAINT chk_game_status
+        CHECK (status IN ('pending', 'in_progress', 'completed', 'abandoned'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Add constraint for valid game modes
-ALTER TABLE game_sessions 
-ADD CONSTRAINT chk_game_mode 
-CHECK (game_mode IN ('classic', 'time_attack', 'challenge', 'multiplayer'));
+DO $$ BEGIN
+    ALTER TABLE game_sessions ADD CONSTRAINT chk_game_mode
+        CHECK (game_mode IN ('classic', 'time_attack', 'challenge', 'multiplayer'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

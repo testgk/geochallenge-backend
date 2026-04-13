@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_scores_achieved_at ON scores(achieved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_leaderboard ON scores(game_mode, difficulty, points DESC);
 
 -- Add constraint for valid score types
-ALTER TABLE scores 
-ADD CONSTRAINT chk_score_type 
-CHECK (score_type IN ('game_score', 'daily_best', 'weekly_best', 'all_time'));
+DO $$ BEGIN
+    ALTER TABLE scores ADD CONSTRAINT chk_score_type
+        CHECK (score_type IN ('game_score', 'daily_best', 'weekly_best', 'all_time'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
