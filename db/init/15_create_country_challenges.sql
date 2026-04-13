@@ -32,6 +32,11 @@ SELECT
     c.name                                                 AS location_name,
     c.name                                                 AS country,
     COALESCE( c.continent, 'Unknown' )                    AS continent,
-    'medium'                                               AS difficulty
+    CASE
+        WHEN c.area_km2 <    10000 THEN 'expert'
+        WHEN c.area_km2 <   100000 THEN 'hard'
+        WHEN c.area_km2 < 1000000  THEN 'medium'
+        ELSE                            'easy'
+    END                                                    AS difficulty
 FROM countries c
 ON CONFLICT ( id ) DO NOTHING;
