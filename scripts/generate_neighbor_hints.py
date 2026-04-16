@@ -32,7 +32,7 @@ def get_db_connection():
     url = os.environ.get( "DATABASE_URL" )
     if url:
         if "sslmode" not in url:
-            url += "?sslmode=require"
+            url += "?sslmode=prefer"
         return psycopg2.connect( url )
     return psycopg2.connect(
         host     = os.environ.get( "DB_HOST",     "localhost" ),
