@@ -123,9 +123,9 @@ def load_boundaries(geojson_data):
             skipped += 1
             continue
         
-        # Some codes are -99 for territories, use name-based code
+        # Some codes are -99 for territories, use a sanitised name-based code
         if country_code == "-99" or not country_code:
-            country_code = country_name[:3].upper()
+            country_code = country_name.upper().replace( " ", "_" )[ :10 ]
         
         bbox = calculate_bbox(geometry)
         

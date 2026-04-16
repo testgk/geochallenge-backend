@@ -613,22 +613,6 @@ ON CONFLICT (id) DO UPDATE SET
 -- ============================================================
 -- 11_create_country_boundaries.sql
 -- ============================================================
--- Create country_boundaries table for storing GeoJSON polygon data
--- Used for point-in-polygon checking to validate clicks are within country borders
-
-CREATE TABLE IF NOT EXISTS country_boundaries (
-    id SERIAL PRIMARY KEY,
-    country_code VARCHAR(3) NOT NULL UNIQUE,  -- ISO 3166-1 alpha-3 code
-    country_name VARCHAR(100) NOT NULL,
-    geometry JSONB NOT NULL,  -- GeoJSON geometry (Polygon or MultiPolygon)
-    bbox JSONB,  -- Bounding box [minLng, minLat, maxLng, maxLat] for quick filtering
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indexes for fast lookups
-CREATE INDEX IF NOT EXISTS idx_country_boundaries_name ON country_boundaries(country_name);
-CREATE INDEX IF NOT EXISTS idx_country_boundaries_code ON country_boundaries(country_code);
-CREATE INDEX IF NOT EXISTS idx_country_boundaries_geometry ON country_boundaries USING GIN(geometry);
 
 -- ============================================================
 -- 12_add_challenge_type.sql
@@ -746,4 +730,27 @@ SET difficulty = CASE
 END
 FROM countries c
 WHERE LOWER( c.name ) = LOWER( cc.country );
+
+-- ============================================================
+-- 18_create_country_neighbors.sql
+-- ============================================================
+-- Table storing pre-computed neighbor relationships between countries.
+-- Populated by scripts/generate_neighbor_hints.py.
+
+CREATE TABLE IF NOT EXISTS country_neighbors (
+    id              SERIAL PRIMARY KEY,
+    country_id      VARCHAR(100) NOT NULL REFERENCES country_challenges( id ) ON DELETE CASCADE,
+    neighbor_name   VARCHAR(100) NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE ( country_id, neighbor_name )
+);
+
+CREATE INDEX IF NOT EXISTS idx_country_neighbors_country_id ON country_neighbors( country_id );
+
+-- ============================================================
+-- 19_widen_country_code.sql
+-- ============================================================
+-- Widen country_boundaries.country_code to accommodate name-based fallback codes
+-- for countries whose ISO_A3 is -99 (disputed territories, etc.)
+ALTER TABLE country_boundaries ALTER COLUMN country_code TYPE VARCHAR(20);
 

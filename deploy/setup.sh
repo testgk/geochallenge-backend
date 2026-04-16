@@ -60,13 +60,27 @@ else
 fi
 echo "      Done."
 
-# ── Step 3: verify ───────────────────────────────────────────────────────────
-echo "[3/3] Verifying..."
+# ── Step 3: neighbor hints ───────────────────────────────────────────────────
+echo "[3/3] Generating neighbor hints..."
+pip install shapely -q
+if [ -n "${DATABASE_URL:-}" ]; then
+    DATABASE_URL="$DATABASE_URL" python3 scripts/generate_neighbor_hints.py
+else
+    DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_NAME="$DB_NAME" \
+    DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" \
+        python3 scripts/generate_neighbor_hints.py
+fi
+echo "      Done."
+
+# ── Step 4: verify ───────────────────────────────────────────────────────────
+echo "[4/4] Verifying..."
 $PSQL -t -c "
 SELECT '  ' || rpad(table_name, 26) || count::text AS line FROM (
     SELECT 'challenges'          AS table_name, COUNT(*) AS count FROM challenges
     UNION ALL SELECT 'country_challenges',      COUNT(*) FROM country_challenges
     UNION ALL SELECT 'country_boundaries',      COUNT(*) FROM country_boundaries
+    UNION ALL SELECT 'country_neighbors',       COUNT(*) FROM country_neighbors
+    UNION ALL SELECT 'country_challenge_hints', COUNT(*) FROM country_challenge_hints
     UNION ALL SELECT 'countries',               COUNT(*) FROM countries
     UNION ALL SELECT 'difficulty_levels',       COUNT(*) FROM difficulty_levels
 ) t ORDER BY table_name;
