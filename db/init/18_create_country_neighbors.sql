@@ -1,12 +1,14 @@
--- Table storing pre-computed neighbor relationships between countries.
+-- One row per country, up to 6 neighbors as columns.
 -- Populated by scripts/generate_neighbor_hints.py.
 
-CREATE TABLE IF NOT EXISTS country_neighbors (
-    id              SERIAL PRIMARY KEY,
-    country_id      VARCHAR(100) NOT NULL REFERENCES country_challenges( id ) ON DELETE CASCADE,
-    neighbor_name   VARCHAR(100) NOT NULL,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE ( country_id, neighbor_name )
-);
+DROP TABLE IF EXISTS country_neighbors;
 
-CREATE INDEX IF NOT EXISTS idx_country_neighbors_country_id ON country_neighbors( country_id );
+CREATE TABLE IF NOT EXISTS country_neighbors (
+    country_id  VARCHAR(100) PRIMARY KEY REFERENCES country_challenges( id ) ON DELETE CASCADE,
+    neighbor_1  VARCHAR(100),
+    neighbor_2  VARCHAR(100),
+    neighbor_3  VARCHAR(100),
+    neighbor_4  VARCHAR(100),
+    neighbor_5  VARCHAR(100),
+    neighbor_6  VARCHAR(100)
+);

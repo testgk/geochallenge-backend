@@ -110,32 +110,40 @@ def find_neighbors( country_name, boundaries, tolerance = 0.1 ):
     return neighbors
 
 
+MAX_NEIGHBORS = 6
+
+
 def save_neighbors_and_hints( conn, challenge_id, country_name, neighbors ):
-    """Insert neighbors and replace hints for a country challenge."""
+    """Insert neighbors (one row per country, up to 6 columns) and replace hints."""
+    # Pick up to MAX_NEIGHBORS, shuffle for variety
+    picked = list( neighbors[ :MAX_NEIGHBORS ] )
+    random.shuffle( picked )
+    # Pad to 6 with None
+    cols = ( picked + [ None ] * MAX_NEIGHBORS )[ :MAX_NEIGHBORS ]
+
     with conn.cursor() as cur:
-        # Clear existing neighbors and hints for this challenge
-        cur.execute( "DELETE FROM country_neighbors WHERE country_id = %s", ( challenge_id, ) )
         cur.execute( "DELETE FROM country_challenge_hints WHERE challenge_id = %s", ( challenge_id, ) )
 
-        for neighbor in neighbors:
-            cur.execute(
-                """
-                INSERT INTO country_neighbors ( country_id, neighbor_name )
-                VALUES ( %s, %s )
-                ON CONFLICT ( country_id, neighbor_name ) DO NOTHING
-                """,
-                ( challenge_id, neighbor )
-            )
+        cur.execute(
+            """
+            INSERT INTO country_neighbors
+                ( country_id, neighbor_1, neighbor_2, neighbor_3, neighbor_4, neighbor_5, neighbor_6 )
+            VALUES ( %s, %s, %s, %s, %s, %s, %s )
+            ON CONFLICT ( country_id ) DO UPDATE SET
+                neighbor_1 = EXCLUDED.neighbor_1,
+                neighbor_2 = EXCLUDED.neighbor_2,
+                neighbor_3 = EXCLUDED.neighbor_3,
+                neighbor_4 = EXCLUDED.neighbor_4,
+                neighbor_5 = EXCLUDED.neighbor_5,
+                neighbor_6 = EXCLUDED.neighbor_6
+            """,
+            ( challenge_id, *cols )
+        )
 
-        # Create one hint per neighbor: "One of my neighbors is <name>"
-        shuffled = list( neighbors )
-        random.shuffle( shuffled )
-        for i, neighbor in enumerate( shuffled ):
+        # One hint per neighbor: "One of my neighbors is <name>"
+        for i, neighbor in enumerate( picked ):
             cur.execute(
-                """
-                INSERT INTO country_challenge_hints ( challenge_id, hint_text, hint_order )
-                VALUES ( %s, %s, %s )
-                """,
+                "INSERT INTO country_challenge_hints ( challenge_id, hint_text, hint_order ) VALUES ( %s, %s, %s )",
                 ( challenge_id, f"One of my neighbors is {neighbor}", i )
             )
 
